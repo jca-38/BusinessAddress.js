@@ -1,0 +1,81 @@
+import React, { Component } from 'react';
+
+import {
+    View,
+    Text,
+    TextInput,
+    StyleSheet,
+    TouchableOpacity,
+    AsyncStorage,
+} from 'react-native';
+
+import { StackNavigator, NavigationEvents } from 'react-navigation';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+
+export default class BusinessAddress extends React.Component {
+
+    static navigationOptions = {
+        title: 'BusinessAddress'
+    };
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            RestaurantName: '',
+        }
+    }
+    
+    //This is the piece of code that sets the restaurant name from Google Places.
+    sendData = async(value) => {
+        AsyncStorage.setItem('RestaurantName', JSON.stringify(value));
+        this.setState({ 'RestaurantName': value });
+        this.props.navigation.navigate('BusinessPayment', {
+            restName: this.state.RestaurantName,
+            otherParam: '101',
+        });
+        //this piece of code here takes the Restaurant info I get back and splits it up to exactly how I want it to read.
+        const { navigation } = this.props;
+        const rest_name = navigation.getParam('restName', 'No-User');
+        const other_param = navigation.getParam('otherParam', 'No-User');
+        
+        const rName = JSON.stringify(rest_name);
+        const words = rName.substring(16, 67);
+        const words2 = words.split(',');
+        
+        //this piece of code here is designed to take the restaurant name and address that I split and insert it into my MySQL database.
+        fetch('http://My PHP Code', {
+            method: 'POST',
+            body: JSON.stringify(words),
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then((response) => response.text())
+        .then((responseJson) => {
+            alert(JSON.stringify(responseJson));
+            console.log(responseJson);
+
+            this.props.navigation.navigate('BusinessPayment');
+        })
+        .done();
+    }
+    
+    //this piece of code here is my layout of Google Places AutoComplete.
+    render() {
+        const { navigate } = this.props.navigation;
+        return (
+            <GooglePlacesAutocomplete 
+                placeholder='Enter Restaurant Name and Address'
+                minLength={2}
+                autoFocus={false}
+                returnKeyType={'search'}
+                keyboardAppearance={'light'}
+                listViewDisplayed='auto'
+                fetchDetails={true}
+                renderDescription={row => row.description}
+                onChangeText={(RestaurantName) => this.setState({RestaurantName})}
+                value={this.state.RestaurantName}
+                onPress={this.sendData}
+
+                getDefaultValue={() => ''}
